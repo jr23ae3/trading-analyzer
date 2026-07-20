@@ -92,3 +92,22 @@ export type {
   MitigationStatus,
   SMCScores,
 } from './smcTypes'
+
+// Scalping strategy engine
+export { analyzeScalpingStrategy, analyzeScalpingSignal } from './scalping'
+
+export type {
+  ScalpingSignal,
+  TrendDirection,
+  EMAAlignment,
+  VWAPAnalysis,
+  VolumeAnalysis,
+  ATRFilter,
+  TrendFilter,
+  MomentumFilter,
+  PriceStructure,
+  SignalComponent,
+  ScalpingSignalResult,
+  ScalpingEngineOptions,
+  ScalpingEngineResults,
+} from './scalpingTypes'
