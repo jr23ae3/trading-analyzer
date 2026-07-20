@@ -7,11 +7,13 @@ import { PriceDisplay } from '@/components/analysis'
 import { Watchlist } from '@/components/Watchlist'
 import { TradeJournal } from '@/components/TradeJournal'
 import { PaperTrading } from '@/components/PaperTrading'
+import { TradingReport } from '@/components/TradingReport'
+import { ChartAnalysisPanel } from '@/components/ChartAnalysisPanel'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useChartStore } from '@/store'
 import { cn } from '@/utils'
 
-type Tab = 'chart' | 'journal'
+type Tab = 'chart' | 'analyze' | 'report' | 'journal'
 
 export function App() {
   useMarketData()
@@ -49,13 +51,13 @@ export function App() {
         </header>
 
         {/* Tabs */}
-        <div className="flex gap-1 px-4 pt-2 border-b border-slate-800 shrink-0">
-          {(['chart', 'journal'] as Tab[]).map((t) => (
+        <div className="flex gap-1 px-4 pt-2 border-b border-slate-800 shrink-0 overflow-x-auto">
+          {(['chart', 'analyze', 'report', 'journal'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={cn(
-                'px-3 py-1.5 text-sm font-medium rounded-t transition-colors capitalize',
+                'px-3 py-1.5 text-sm font-medium rounded-t transition-colors capitalize whitespace-nowrap',
                 tab === t ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white',
               )}
             >
@@ -66,9 +68,19 @@ export function App() {
 
         {/* Content */}
         <div className="flex-1 overflow-hidden flex gap-4 p-4">
-          {/* Main chart area */}
+          {/* Main content area */}
           <div className="flex-1 overflow-hidden">
             {tab === 'chart' && <CandlestickChart />}
+            {tab === 'analyze' && (
+              <div className="h-full overflow-y-auto">
+                <ChartAnalysisPanel />
+              </div>
+            )}
+            {tab === 'report' && (
+              <div className="h-full overflow-y-auto">
+                <TradingReport />
+              </div>
+            )}
             {tab === 'journal' && (
               <div className="h-full overflow-y-auto">
                 <TradeJournal />
@@ -76,7 +88,7 @@ export function App() {
             )}
           </div>
 
-          {/* Paper Trading panel */}
+          {/* Paper Trading panel (only on chart tab) */}
           {tab === 'chart' && (
             <div className="w-72 overflow-y-auto">
               <PaperTrading />

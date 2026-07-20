@@ -1,5 +1,10 @@
 export { fetchBars, fetchQuote } from './marketDataService'
 export { saveJournal, loadJournal, clearJournal } from './journalService'
+export {
+  analyzeChartScreenshot,
+  imageToBase64,
+  formatAnalysisAsMarkdown,
+} from './chartAnalysisService'
 
 // Market data service layer — adapters, types, errors
 export {
@@ -34,4 +39,15 @@ export type {
   BinanceConfig,
   YahooConfig,
 } from './marketData'
+
+export type {
+  ChartAnalysisRequest,
+  ChartAnalysisResult,
+  CandleAnalysis,
+  TrendAnalysis,
+  PriceLevel,
+  IndicatorAnalysis,
+  VolumeAnalysis,
+  PatternAnalysis,
+} from './chartAnalysisService'
 
