@@ -2,14 +2,28 @@ import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import type { TradeEntry } from '@/types'
 
+export interface JournalFilters {
+  dateFrom?: string       // YYYY-MM-DD
+  dateTo?: string         // YYYY-MM-DD
+  strategy?: string
+  symbol?: string
+  resultType?: 'all' | 'wins' | 'losses'
+}
+
 interface TradeJournalState {
   trades: TradeEntry[]
+  filters: JournalFilters
 
   // ── Actions ────────────────────────────────────────────────────────────────
   addTrade: (trade: Omit<TradeEntry, 'id'>) => void
   updateTrade: (id: string, patch: Partial<TradeEntry>) => void
   closeTrade: (id: string, exitPrice: number, exitDate: string) => void
   deleteTrade: (id: string) => void
+
+  // ── Filtering ──────────────────────────────────────────────────────────────
+  setFilters: (filters: JournalFilters) => void
+  clearFilters: () => void
+  getFilteredTrades: () => TradeEntry[]
 
   // ── Derived helpers ────────────────────────────────────────────────────────
   getTradesBySymbol: (symbol: string) => TradeEntry[]
@@ -26,11 +40,43 @@ function calcPnL(trade: TradeEntry): number {
   return diff * trade.quantity
 }
 
+function matchesFilters(trade: TradeEntry, filters: JournalFilters): boolean {
+  // Date filtering
+  if (filters.dateFrom) {
+    const tradeDate = trade.entryDate.split('T')[0]
+    if (tradeDate < filters.dateFrom) return false
+  }
+  if (filters.dateTo) {
+    const tradeDate = trade.entryDate.split('T')[0]
+    if (tradeDate > filters.dateTo) return false
+  }
+
+  // Strategy filtering
+  if (filters.strategy && trade.strategy !== filters.strategy) {
+    return false
+  }
+
+  // Symbol filtering
+  if (filters.symbol && trade.symbol !== filters.symbol) {
+    return false
+  }
+
+  // Result type filtering (only for closed trades)
+  if (filters.resultType && filters.resultType !== 'all' && trade.status === 'closed') {
+    const pnl = trade.pnl ?? 0
+    if (filters.resultType === 'wins' && pnl <= 0) return false
+    if (filters.resultType === 'losses' && pnl >= 0) return false
+  }
+
+  return true
+}
+
 export const useTradeJournalStore = create<TradeJournalState>()(
   devtools(
     persist(
       (set, get) => ({
         trades: [],
+        filters: {},
 
         addTrade: (trade) =>
           set(
@@ -72,6 +118,17 @@ export const useTradeJournalStore = create<TradeJournalState>()(
             false,
             'deleteTrade',
           ),
+
+        setFilters: (filters) =>
+          set((state) => ({ filters: { ...state.filters, ...filters } }), false, 'setFilters'),
+
+        clearFilters: () =>
+          set({ filters: {} }, false, 'clearFilters'),
+
+        getFilteredTrades: () => {
+          const { trades, filters } = get()
+          return trades.filter((t) => matchesFilters(t, filters))
+        },
 
         getTradesBySymbol: (symbol) =>
           get().trades.filter((t) => t.symbol === symbol),

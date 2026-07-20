@@ -44,6 +44,8 @@ export interface WatchlistItem {
 // ─── Trade Journal ────────────────────────────────────────────────────────────
 export type TradeDirection = 'long' | 'short'
 export type TradeStatus = 'open' | 'closed' | 'cancelled'
+export type TradeGrade = 'A+' | 'A' | 'B' | 'C' | 'AVOID'
+export type EmotionType = 'confident' | 'neutral' | 'nervous' | 'greedy' | 'fearful' | 'disciplined'
 
 export interface TradeEntry {
   id: string
@@ -60,6 +62,15 @@ export interface TradeEntry {
   pnl?: number
   notes?: string
   tags?: string[]
+  
+  // ── Journal Extensions ────────────────────────────────────────────────────
+  screenshotBase64?: string     // Base64 encoded image
+  screenshotDataURL?: string    // Data URL for img src
+  setup?: string                // Setup description
+  grade?: TradeGrade            // Trade grade A+ to AVOID
+  emotions?: EmotionType[]      // Emotions during trade
+  mistakes?: string[]           // What went wrong
+  strategy?: string             // Strategy name/type
 }
 
 // ─── Analysis ─────────────────────────────────────────────────────────────────
