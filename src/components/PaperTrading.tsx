@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useTradeStore } from '@/store/tradeStore'
-import { createTrade, isValidEntry } from '@/lib/tradingService'
+import { createTrade, isValidEntry, calculateTradeMetrics } from '@/lib/tradingService'
 import { useChartStore } from '@/store'
 import type { TradeDirection } from '@/lib/tradingTypes'
 
 /**
  * Paper Trading UI Panel
  * Allows users to manage trades with entry/stop/target adjustment
+ * Trades are filtered and displayed per active chart symbol
  */
 export function PaperTrading() {
   const [direction, setDirection] = useState<TradeDirection>('long')
@@ -19,38 +20,94 @@ export function PaperTrading() {
   const bars = useChartStore((s) => s.bars)
   const activeSymbol = useChartStore((s) => s.activeSymbol)
 
-  const activeTrade = useTradeStore((s) => s.activeTrade)
-  const trades = useTradeStore((s) => s.trades)
-  const settings = useTradeStore((s) => s.settings)
-  const metrics = useTradeStore((s) => s.metrics)
+  // Current market price = last bar's close
+  const currentPrice = bars.length > 0 ? bars[bars.length - 1].close : null
 
-  const { setActiveTrade, addTrade, closeTrade, deleteTrade, cancelTrade } = useTradeStore()
+  const allTrades = useTradeStore((s) => s.trades)
+  const allActiveTrade = useTradeStore((s) => s.activeTrade)
+  const settings = useTradeStore((s) => s.settings)
+
+  const { setActiveTrade, addTrade, closeTrade, cancelTrade } = useTradeStore()
+
+  // Filter trades for the active symbol only
+  const trades = allTrades.filter((t) => t.symbol === activeSymbol)
+  const activeTrade = allActiveTrade?.symbol === activeSymbol ? allActiveTrade : null
+
+  // Calculate metrics for the active symbol only
+  const metrics = calculateTradeMetrics(trades)
 
   const currentBar = bars.length > 0 ? bars.length - 1 : 0
 
-  const handlePlaceTrade = () => {
+  const handleMarketOrder = (dir: TradeDirection) => {
     setError('')
-
-    const entry = parseFloat(entryPrice)
-    const stop = parseFloat(stopPrice)
-    const target = parseFloat(targetPrice)
-
-    if (!entry || !stop || !target) {
-      setError('Please enter entry, stop, and target prices')
+    if (!currentPrice) {
+      setError('No market price available')
       return
     }
+    
+    const stop   = stopPrice ? parseFloat(stopPrice) : null
+    const target = targetPrice ? parseFloat(targetPrice) : null
 
-    if (!isValidEntry(direction, entry, stop, target)) {
-      setError(`Invalid entry: For ${direction} trades, entry must be between stop and target`)
+    // Validate if both are provided
+    if ((stop || target) && (!stop || !target)) {
+      setError('Provide both Stop and Target, or leave both empty')
+      return
+    }
+    
+    // If both are provided, validate their relationship
+    if (stop && target && !isValidEntry(dir, currentPrice, stop, target)) {
+      setError(`Invalid levels: For ${dir} trades, stop must be ${dir === 'long' ? 'below' : 'above'} and target ${dir === 'long' ? 'above' : 'below'} entry`)
       return
     }
 
     const trade = createTrade(
       activeSymbol,
-      direction,
+      dir,
+      { price: currentPrice, barIndex: currentBar, timestamp: Date.now() },
+      stop ? { price: stop, barIndex: currentBar, timestamp: Date.now() } : null,
+      target ? { price: target, barIndex: currentBar, timestamp: Date.now() } : null,
+      settings.accountSize,
+      settings.riskPerTrade,
+    )
+    setDirection(dir)
+    addTrade(trade)
+    setEntryPrice('')
+    setStopPrice('')
+    setTargetPrice('')
+    setExitPrice('')
+  }
+
+  const handlePlaceTrade = (overrideDirection?: TradeDirection) => {
+    setError('')
+    const dir = overrideDirection ?? direction
+
+    const entry = parseFloat(entryPrice)
+    const stop = stopPrice ? parseFloat(stopPrice) : null
+    const target = targetPrice ? parseFloat(targetPrice) : null
+
+    if (!entry) {
+      setError('Please enter an entry price')
+      return
+    }
+
+    // Validate if both are provided
+    if ((stop || target) && (!stop || !target)) {
+      setError('Provide both Stop and Target, or leave both empty')
+      return
+    }
+
+    // If both are provided, validate their relationship
+    if (stop && target && !isValidEntry(dir, entry, stop, target)) {
+      setError(`Invalid entry: For ${dir} trades, entry must be between stop and target`)
+      return
+    }
+
+    const trade = createTrade(
+      activeSymbol,
+      dir,
       { price: entry, barIndex: currentBar, timestamp: Date.now() },
-      { price: stop, barIndex: currentBar, timestamp: Date.now() },
-      { price: target, barIndex: currentBar, timestamp: Date.now() },
+      stop ? { price: stop, barIndex: currentBar, timestamp: Date.now() } : null,
+      target ? { price: target, barIndex: currentBar, timestamp: Date.now() } : null,
       settings.accountSize,
       settings.riskPerTrade,
     )
@@ -76,74 +133,131 @@ export function PaperTrading() {
     <div className="flex flex-col gap-4 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
       {/* ── Header ────────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-100">Paper Trading</h3>
+        <div>
+          <h3 className="text-sm font-semibold text-slate-100">Paper Trading</h3>
+          <p className="text-xs text-slate-400 mt-0.5">{activeSymbol}</p>
+        </div>
         <div className="text-xs text-slate-400">
           Trades: {trades.length} | Win Rate: {metrics.winRate.toFixed(1)}%
         </div>
       </div>
+
+      {/* ── Market Price + Instant Buttons ───────────────────────────────────── */}
+      {!activeTrade && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between bg-slate-800/60 px-3 py-2 rounded">
+            <span className="text-xs text-slate-400">Market Price</span>
+            <span className="text-sm font-bold text-slate-100">
+              {currentPrice != null ? `$${currentPrice.toFixed(2)}` : '—'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => handleMarketOrder('long')}
+              disabled={!currentPrice}
+              className="py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded transition-colors"
+            >
+              Market Buy
+            </button>
+            <button
+              onClick={() => handleMarketOrder('short')}
+              disabled={!currentPrice}
+              className="py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded transition-colors"
+            >
+              Market Sell
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 text-center">Stop &amp; Target Optional</p>
+        </div>
+      )}
 
       {/* ── Error Message ─────────────────────────────────────────────────────── */}
       {error && <div className="text-xs text-red-400 bg-red-900/20 px-2 py-1 rounded">{error}</div>}
 
       {/* ── If No Active Trade ────────────────────────────────────────────────── */}
       {!activeTrade && (
-        <div className="space-y-3">
-          {/* Direction */}
-          <div className="flex gap-2">
+        <div className="space-y-2">
+          {/* Trade Direction Selector */}
+          <div className="flex gap-2 bg-slate-800/60 p-1 rounded">
             <button
               onClick={() => setDirection('long')}
-              className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${
-                direction === 'long'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              className={`flex-1 px-2 py-1.5 text-xs font-bold rounded transition-colors ${
+                direction === 'long' 
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-slate-700 text-slate-400 hover:text-slate-200'
               }`}
             >
-              LONG
+              LONG ↑
             </button>
             <button
               onClick={() => setDirection('short')}
-              className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${
-                direction === 'short'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              className={`flex-1 px-2 py-1.5 text-xs font-bold rounded transition-colors ${
+                direction === 'short' 
+                  ? 'bg-red-600 text-white' 
+                  : 'bg-slate-700 text-slate-400 hover:text-slate-200'
               }`}
             >
-              SHORT
+              SHORT ↓
             </button>
           </div>
 
-          {/* Entry/Stop/Target */}
+          {/* Stop/Target inputs with direction-based hints */}
           <div className="space-y-2">
-            <input
-              type="number"
-              placeholder="Entry Price"
-              value={entryPrice}
-              onChange={(e) => setEntryPrice(e.target.value)}
-              className="w-full px-2 py-1 bg-slate-800 border border-slate-600 rounded text-xs text-slate-100 placeholder-slate-500"
-            />
-            <input
-              type="number"
-              placeholder="Stop Loss"
-              value={stopPrice}
-              onChange={(e) => setStopPrice(e.target.value)}
-              className="w-full px-2 py-1 bg-slate-800 border border-slate-600 rounded text-xs text-slate-100 placeholder-slate-500"
-            />
-            <input
-              type="number"
-              placeholder="Target"
-              value={targetPrice}
-              onChange={(e) => setTargetPrice(e.target.value)}
-              className="w-full px-2 py-1 bg-slate-800 border border-slate-600 rounded text-xs text-slate-100 placeholder-slate-500"
-            />
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400">
+                {direction === 'long' ? 'Stop Loss (must be below entry) - Optional' : 'Stop Loss (must be above entry) - Optional'}
+              </label>
+              <input
+                type="number"
+                placeholder={direction === 'long' ? 'e.g., 130 for entry 135' : 'e.g., 140 for entry 135'}
+                value={stopPrice}
+                onChange={(e) => setStopPrice(e.target.value)}
+                className="w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-400"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400">
+                {direction === 'long' ? 'Target Price (must be above entry) - Optional' : 'Target Price (must be below entry) - Optional'}
+              </label>
+              <input
+                type="number"
+                placeholder={direction === 'long' ? 'e.g., 140 for entry 135' : 'e.g., 130 for entry 135'}
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                className="w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-400"
+              />
+            </div>
           </div>
 
-          {/* Place Trade Button */}
-          <button
-            onClick={handlePlaceTrade}
-            className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded transition-colors"
-          >
-            Place Trade
-          </button>
+          {/* Divider */}
+          <div className="border-t border-slate-700/60 pt-2">
+            <p className="text-xs text-slate-500 mb-2">Or place at custom entry:</p>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                placeholder="Custom entry"
+                value={entryPrice}
+                onChange={(e) => setEntryPrice(e.target.value)}
+                className="flex-1 px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-400"
+              />
+              <div className="flex gap-1">
+                <button
+                  onClick={() => handlePlaceTrade('long')}
+                  className="px-2 py-1 bg-green-700 hover:bg-green-600 text-white text-xs font-bold rounded transition-colors"
+                  title="Limit Long"
+                >
+                  L
+                </button>
+                <button
+                  onClick={() => handlePlaceTrade('short')}
+                  className="px-2 py-1 bg-red-700 hover:bg-red-600 text-white text-xs font-bold rounded transition-colors"
+                  title="Limit Short"
+                >
+                  S
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -162,42 +276,58 @@ export function PaperTrading() {
               <span className="text-slate-400">Entry:</span>
               <span className="text-slate-100">${activeTrade.entry.price.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Stop Loss:</span>
-              <span className="text-red-400">${activeTrade.stopLoss.price.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Target:</span>
-              <span className="text-green-400">${activeTrade.target.price.toFixed(2)}</span>
-            </div>
+            {activeTrade.stopLoss && (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Stop Loss:</span>
+                <span className="text-red-400">${activeTrade.stopLoss.price.toFixed(2)}</span>
+              </div>
+            )}
+            {activeTrade.target && (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Target:</span>
+                <span className="text-green-400">${activeTrade.target.price.toFixed(2)}</span>
+              </div>
+            )}
           </div>
 
           {/* Metrics */}
           <div className="bg-slate-800/50 rounded p-2 space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Risk:</span>
-              <span className="text-slate-100">${activeTrade.risk.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Reward:</span>
-              <span className="text-slate-100">${activeTrade.reward.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">R/R Ratio:</span>
-              <span className="text-slate-100">{activeTrade.riskRewardRatio.toFixed(2)}:1</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Position Size:</span>
-              <span className="text-slate-100">{activeTrade.positionSize} units</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Risk $:</span>
-              <span className="text-red-400">${activeTrade.riskAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Reward $:</span>
-              <span className="text-green-400">${activeTrade.rewardAmount.toFixed(2)}</span>
-            </div>
+            {activeTrade.risk > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Risk:</span>
+                <span className="text-slate-100">${activeTrade.risk.toFixed(2)}</span>
+              </div>
+            )}
+            {activeTrade.reward > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Reward:</span>
+                <span className="text-slate-100">${activeTrade.reward.toFixed(2)}</span>
+              </div>
+            )}
+            {activeTrade.riskRewardRatio > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">R/R Ratio:</span>
+                <span className="text-slate-100">{activeTrade.riskRewardRatio.toFixed(2)}:1</span>
+              </div>
+            )}
+            {activeTrade.positionSize > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Position Size:</span>
+                <span className="text-slate-100">{activeTrade.positionSize} units</span>
+              </div>
+            )}
+            {activeTrade.riskAmount > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Risk $:</span>
+                <span className="text-red-400">${activeTrade.riskAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {activeTrade.rewardAmount > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Reward $:</span>
+                <span className="text-green-400">${activeTrade.rewardAmount.toFixed(2)}</span>
+              </div>
+            )}
           </div>
 
           {/* Close Trade */}

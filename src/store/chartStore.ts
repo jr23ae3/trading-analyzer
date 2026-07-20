@@ -46,10 +46,10 @@ export const useChartStore = create<ChartState>()(
       ...initialState,
 
       setActiveSymbol: (symbol) =>
-        set({ activeSymbol: symbol, bars: [], error: null }, false, 'setActiveSymbol'),
+        set({ activeSymbol: symbol, error: null }, false, 'setActiveSymbol'),
 
       setTimeframe: (timeframe) =>
-        set({ timeframe, bars: [], error: null }, false, 'setTimeframe'),
+        set({ timeframe, error: null }, false, 'setTimeframe'),
 
       setBars: (bars) =>
         set({ bars }, false, 'setBars'),

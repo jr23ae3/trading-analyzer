@@ -1,4 +1,4 @@
-import type { OHLCVBar } from '@/types'
+import type { OHLCVBar, Timeframe } from '@/types'
 
 /**
  * Deterministic pseudo-random seeded by a string.
@@ -20,27 +20,69 @@ function seededPrng(seed: string) {
 }
 
 /**
+ * Get the time increment in seconds for a given timeframe.
+ */
+function getTimeIncrement(timeframe: Timeframe): number {
+  switch (timeframe) {
+    case '1m': return 60
+    case '5m': return 300
+    case '15m': return 900
+    case '30m': return 1800
+    case '1h': return 3600
+    case '4h': return 14400
+    case '1D': return 86400
+    case '1W': return 604800 // 7 days
+    case '1M': return 2592000 // 30 days
+    default: return 86400
+  }
+}
+
+/**
+ * Get the initial bar count for a given timeframe to ensure sufficient history.
+ */
+function getBarCount(timeframe: Timeframe): number {
+  switch (timeframe) {
+    case '1m': return 390 // ~1 trading day in 1m
+    case '5m': return 78  // ~1 trading day in 5m
+    case '15m': return 26 // ~1 trading day in 15m
+    case '30m': return 13 // ~1 trading day in 30m
+    case '1h': return 6   // ~1 trading day in 1h
+    case '4h': return 60  // ~2.5 months in 4h
+    case '1D': return 252 // ~1 year in 1D
+    case '1W': return 52  // ~1 year in 1W
+    case '1M': return 24  // ~2 years in 1M
+    default: return 252
+  }
+}
+
+/**
  * Generate realistic-looking OHLCV bars using a correlated random walk.
  * @param symbol  Used to seed the PRNG so results are deterministic per symbol.
- * @param count   Number of daily bars to generate.
+ * @param timeframe Timeframe for bar generation (1m, 5m, 15m, 30m, 1h, 4h, 1D, 1W, 1M).
  * @param startPrice  Opening price of the first bar.
  * @param startDate   ISO date string for the first bar (YYYY-MM-DD).
  */
 export function generateSampleData(
   symbol = 'AAPL',
-  count = 252,
+  timeframe: Timeframe = '1D',
   startPrice = 185,
   startDate = '2025-01-02',
 ): OHLCVBar[] {
-  const rand = seededPrng(symbol)
+  const rand = seededPrng(symbol + timeframe)
+  const increment = getTimeIncrement(timeframe)
+  const count = getBarCount(timeframe)
 
-  // Skip weekends — advance date by 1 day at a time
-  function nextTradingDay(ts: number): number {
-    let next = ts + 86400
-    const dow = new Date(next * 1000).getUTCDay()
-    if (dow === 6) next += 86400  // Saturday → Monday
-    if (dow === 0) next += 86400  // Sunday → Monday
-    return next
+  // Skip weekends for daily+ timeframes
+  function nextTime(ts: number): number {
+    if (increment >= 86400) {
+      // For daily and higher timeframes, skip weekends
+      let next = ts + increment
+      const dow = new Date(next * 1000).getUTCDay()
+      if (dow === 6) next += 86400 * 2 // Saturday → Monday
+      if (dow === 0) next += 86400     // Sunday → Monday
+      return next
+    }
+    return ts + increment
   }
 
   const bars: OHLCVBar[] = []
@@ -75,7 +117,7 @@ export function generateSampleData(
     })
 
     prevClose = close
-    time = nextTradingDay(time)
+    time = nextTime(time)
   }
 
   return bars

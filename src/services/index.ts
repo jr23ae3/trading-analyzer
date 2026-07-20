@@ -5,6 +5,8 @@ export {
   imageToBase64,
   formatAnalysisAsMarkdown,
 } from './chartAnalysisService'
+export { analyzeCoaching } from './coachingService'
+export type { MistakeFrequency, CoachingRecommendation, CoachingAnalysis } from './coachingService'
 
 // Market data service layer — adapters, types, errors
 export {

@@ -85,17 +85,17 @@ export function createTrade(
   symbol: string,
   direction: TradeDirection,
   entry: TradeLevel,
-  stopLoss: TradeLevel,
-  target: TradeLevel,
+  stopLoss: TradeLevel | null,
+  target: TradeLevel | null,
   accountSize: number,
   riskPercentage: number,
 ): Trade {
-  const risk = calculateRisk(entry.price, stopLoss.price)
-  const reward = calculateReward(entry.price, target.price)
+  const risk = stopLoss ? calculateRisk(entry.price, stopLoss.price) : 0
+  const reward = target ? calculateReward(entry.price, target.price) : 0
   const riskRewardRatio = calculateRiskRewardRatio(risk, reward)
-  const positionSize = calculatePositionSize(entry.price, stopLoss.price, accountSize, riskPercentage)
+  const positionSize = stopLoss ? calculatePositionSize(entry.price, stopLoss.price, accountSize, riskPercentage) : 0
   const riskAmount = accountSize * (riskPercentage / 100)
-  const rewardAmount = (reward / risk) * riskAmount
+  const rewardAmount = reward > 0 && risk > 0 ? (reward / risk) * riskAmount : 0
 
   return {
     id: `trade-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -103,8 +103,8 @@ export function createTrade(
     direction,
     status: 'pending',
     entry,
-    stopLoss,
-    target,
+    stopLoss: stopLoss || undefined,
+    target: target || undefined,
     risk,
     reward,
     riskRewardRatio,

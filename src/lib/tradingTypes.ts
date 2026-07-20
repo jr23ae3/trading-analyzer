@@ -28,8 +28,8 @@ export interface Trade {
 
   // Price levels
   entry: TradeLevel
-  stopLoss: TradeLevel
-  target: TradeLevel
+  stopLoss?: TradeLevel
+  target?: TradeLevel
 
   // Calculated metrics
   risk: number // In price units

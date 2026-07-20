@@ -9,11 +9,12 @@ import { TradeJournal } from '@/components/TradeJournal'
 import { PaperTrading } from '@/components/PaperTrading'
 import { TradingReport } from '@/components/TradingReport'
 import { ChartAnalysisPanel } from '@/components/ChartAnalysisPanel'
+import { CoachingPanel } from '@/components/CoachingPanel'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useChartStore } from '@/store'
 import { cn } from '@/utils'
 
-type Tab = 'chart' | 'analyze' | 'report' | 'journal'
+type Tab = 'chart' | 'analyze' | 'report' | 'journal' | 'coaching'
 
 export function App() {
   useMarketData()
@@ -52,7 +53,7 @@ export function App() {
 
         {/* Tabs */}
         <div className="flex gap-1 px-4 pt-2 border-b border-slate-800 shrink-0 overflow-x-auto">
-          {(['chart', 'analyze', 'report', 'journal'] as Tab[]).map((t) => (
+          {(['chart', 'analyze', 'report', 'journal', 'coaching'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -84,6 +85,11 @@ export function App() {
             {tab === 'journal' && (
               <div className="h-full overflow-y-auto">
                 <TradeJournal />
+              </div>
+            )}
+            {tab === 'coaching' && (
+              <div className="h-full overflow-y-auto">
+                <CoachingPanel />
               </div>
             )}
           </div>
