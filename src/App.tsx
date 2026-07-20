@@ -6,6 +6,7 @@ import { IndicatorPanel } from '@/components/indicators'
 import { PriceDisplay } from '@/components/analysis'
 import { Watchlist } from '@/components/Watchlist'
 import { TradeJournal } from '@/components/TradeJournal'
+import { PaperTrading } from '@/components/PaperTrading'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useChartStore } from '@/store'
 import { cn } from '@/utils'
@@ -64,11 +65,21 @@ export function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          {tab === 'chart' && <CandlestickChart />}
-          {tab === 'journal' && (
-            <div className="h-full overflow-y-auto">
-              <TradeJournal />
+        <div className="flex-1 overflow-hidden flex gap-4 p-4">
+          {/* Main chart area */}
+          <div className="flex-1 overflow-hidden">
+            {tab === 'chart' && <CandlestickChart />}
+            {tab === 'journal' && (
+              <div className="h-full overflow-y-auto">
+                <TradeJournal />
+              </div>
+            )}
+          </div>
+
+          {/* Paper Trading panel */}
+          {tab === 'chart' && (
+            <div className="w-72 overflow-y-auto">
+              <PaperTrading />
             </div>
           )}
         </div>

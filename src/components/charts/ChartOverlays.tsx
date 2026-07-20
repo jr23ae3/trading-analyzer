@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useChartStore } from '@/store'
 import { useSMCZones } from '@/hooks'
 import { detectSupportResistance, analyzeMarketStructure, calcSMA } from '@/lib'
+import { useTradeStore } from '@/store/tradeStore'
 
 /**
  * Chart overlay rendering support/resistance, trend lines, channels, VWAP, etc.
@@ -16,6 +17,7 @@ export function ChartOverlays() {
 
   // Get analysis data
   const smc = useSMCZones({})
+  const activeTrade = useTradeStore((s) => s.activeTrade)
 
   // Map bar index and price to canvas coordinates
   const getPixelCoordinates = (barIndex: number, price: number, dims: { width: number; height: number }) => {
@@ -255,6 +257,93 @@ export function ChartOverlays() {
     })
   }
 
+  // Draw active trade entry/stop/target
+  const drawActiveTrade = (ctx: CanvasRenderingContext2D, dims: { width: number; height: number }) => {
+    if (!activeTrade) return
+
+    // Entry (blue line)
+    const entryCoord = getPixelCoordinates(activeTrade.entry.barIndex, activeTrade.entry.price, dims)
+    if (entryCoord) {
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)'
+      ctx.lineWidth = 2
+      ctx.setLineDash([])
+      ctx.beginPath()
+      ctx.moveTo(0, entryCoord.y)
+      ctx.lineTo(dims.width, entryCoord.y)
+      ctx.stroke()
+
+      // Entry label
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.9)'
+      ctx.font = 'bold 12px monospace'
+      ctx.fillText(`ENTRY: ${activeTrade.entry.price.toFixed(2)}`, dims.width - 200, entryCoord.y - 5)
+
+      // Entry point marker
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.8)'
+      ctx.beginPath()
+      ctx.arc(entryCoord.x, entryCoord.y, 5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    // Stop Loss (red line)
+    const stopCoord = getPixelCoordinates(activeTrade.stopLoss.barIndex, activeTrade.stopLoss.price, dims)
+    if (stopCoord) {
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'
+      ctx.lineWidth = 2
+      ctx.setLineDash([5, 5])
+      ctx.beginPath()
+      ctx.moveTo(0, stopCoord.y)
+      ctx.lineTo(dims.width, stopCoord.y)
+      ctx.stroke()
+
+      // Stop Loss label
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.9)'
+      ctx.font = 'bold 12px monospace'
+      ctx.fillText(`SL: ${activeTrade.stopLoss.price.toFixed(2)}`, dims.width - 200, stopCoord.y + 15)
+
+      // Stop Loss point marker
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.8)'
+      ctx.beginPath()
+      ctx.arc(entryCoord?.x ?? dims.width / 2, stopCoord.y, 5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    // Target (green line)
+    const targetCoord = getPixelCoordinates(activeTrade.target.barIndex, activeTrade.target.price, dims)
+    if (targetCoord) {
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.8)'
+      ctx.lineWidth = 2
+      ctx.setLineDash([5, 5])
+      ctx.beginPath()
+      ctx.moveTo(0, targetCoord.y)
+      ctx.lineTo(dims.width, targetCoord.y)
+      ctx.stroke()
+
+      // Target label
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.9)'
+      ctx.font = 'bold 12px monospace'
+      ctx.fillText(`TARGET: ${activeTrade.target.price.toFixed(2)}`, dims.width - 200, targetCoord.y - 5)
+
+      // Target point marker
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.8)'
+      ctx.beginPath()
+      ctx.arc(entryCoord?.x ?? dims.width / 2, targetCoord.y, 5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    // Risk/Reward display
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+    ctx.font = '11px monospace'
+    const rrText = `R/R: ${activeTrade.riskRewardRatio.toFixed(2)}:1`
+    const riskText = `Risk: $${activeTrade.riskAmount.toFixed(2)}`
+    const rewardText = `Reward: $${activeTrade.rewardAmount.toFixed(2)}`
+
+    ctx.fillText(rrText, 10, 30)
+    ctx.fillText(riskText, 10, 45)
+    ctx.fillText(rewardText, 10, 60)
+
+    ctx.setLineDash([])
+  }
+
   // Main render loop
   const render = () => {
     const canvas = canvasRef.current
@@ -290,6 +379,7 @@ export function ChartOverlays() {
       drawFairValueGaps(ctx, dims)
       drawOrderBlocks(ctx, dims)
       drawLiquidity(ctx, dims)
+      drawActiveTrade(ctx, dims)
     } catch (_e) {
       // Silently handle render errors to not interrupt animation loop
     }
