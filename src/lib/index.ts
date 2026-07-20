@@ -111,3 +111,25 @@ export type {
   ScalpingEngineOptions,
   ScalpingEngineResults,
 } from './scalpingTypes'
+
+// Probability engine
+export { calculateProbability, analyzeProbability } from './probability'
+
+export type {
+  TradeGrade,
+  ProbabilityDirection,
+  TrendInput,
+  VolumeInput,
+  MomentumInput,
+  SupportResistanceInput,
+  ATRInput,
+  RSIInput,
+  VWAPInput,
+  EMAAlignmentInput,
+  MarketStructureInput,
+  ProbabilityFactors,
+  ComponentScore,
+  ProbabilityResult,
+  ProbabilityEngineOptions,
+  ProbabilityEngineResults,
+} from './probabilityTypes'
