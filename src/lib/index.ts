@@ -133,3 +133,17 @@ export type {
   ProbabilityEngineOptions,
   ProbabilityEngineResults,
 } from './probabilityTypes'
+
+// Setup rating engine
+export { rateSetup, analyzeSetup } from './setupRating'
+
+export type {
+  SetupGrade,
+  SetupRating,
+  SetupExplanation,
+  SetupMetrics,
+  SetupComponent,
+  SetupResult,
+  SetupRatingOptions,
+  SetupRatingResults,
+} from './setupRatingTypes'
