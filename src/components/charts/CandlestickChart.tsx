@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useCandlestickChart } from '@/hooks'
 import { ChartLegend } from './ChartLegend'
 import { TimeframeSelector } from './TimeframeSelector'
+import { ChartOverlays } from './ChartOverlays'
 import { useChartStore } from '@/store'
 import { cn } from '@/utils'
 import type { OHLCVBar } from '@/types'
@@ -57,6 +58,9 @@ export function CandlestickChart({ symbol, className }: CandlestickChartProps) {
 
         {/* The chart canvas container */}
         <div ref={containerRef} className="w-full h-full" />
+
+        {/* Chart overlays (support/resistance, trend lines, etc.) */}
+        <ChartOverlays />
 
         {/* Loading overlay */}
         {isLoading && (
