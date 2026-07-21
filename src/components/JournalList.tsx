@@ -6,7 +6,6 @@ import type { TradeEntry } from '@/types'
 export function JournalList() {
   const { trades, filters, setFilters, clearFilters, getFilteredTrades, deleteTrade } = useTradeJournalStore()
   const filteredTrades = getFilteredTrades()
-  const stats = calcJournalStats(filteredTrades)
   const allStats = calcJournalStats(trades)
 
   const [expandedId, setExpandedId] = useState<string | null>(null)

@@ -285,7 +285,7 @@ export function ChartOverlays() {
     }
 
     // Stop Loss (red line)
-    const stopCoord = getPixelCoordinates(activeTrade.stopLoss.barIndex, activeTrade.stopLoss.price, dims)
+    const stopCoord = activeTrade.stopLoss ? getPixelCoordinates(activeTrade.stopLoss.barIndex, activeTrade.stopLoss.price, dims) : null
     if (stopCoord) {
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'
       ctx.lineWidth = 2
@@ -298,7 +298,7 @@ export function ChartOverlays() {
       // Stop Loss label
       ctx.fillStyle = 'rgba(239, 68, 68, 0.9)'
       ctx.font = 'bold 12px monospace'
-      ctx.fillText(`SL: ${activeTrade.stopLoss.price.toFixed(2)}`, dims.width - 200, stopCoord.y + 15)
+      ctx.fillText(`SL: ${activeTrade.stopLoss?.price.toFixed(2)}`, dims.width - 200, stopCoord.y + 15)
 
       // Stop Loss point marker
       ctx.fillStyle = 'rgba(239, 68, 68, 0.8)'
@@ -308,7 +308,7 @@ export function ChartOverlays() {
     }
 
     // Target (green line)
-    const targetCoord = getPixelCoordinates(activeTrade.target.barIndex, activeTrade.target.price, dims)
+    const targetCoord = activeTrade.target ? getPixelCoordinates(activeTrade.target.barIndex, activeTrade.target.price, dims) : null
     if (targetCoord) {
       ctx.strokeStyle = 'rgba(34, 197, 94, 0.8)'
       ctx.lineWidth = 2
@@ -321,7 +321,7 @@ export function ChartOverlays() {
       // Target label
       ctx.fillStyle = 'rgba(34, 197, 94, 0.9)'
       ctx.font = 'bold 12px monospace'
-      ctx.fillText(`TARGET: ${activeTrade.target.price.toFixed(2)}`, dims.width - 200, targetCoord.y - 5)
+      ctx.fillText(`TARGET: ${activeTrade.target?.price.toFixed(2)}`, dims.width - 200, targetCoord.y - 5)
 
       // Target point marker
       ctx.fillStyle = 'rgba(34, 197, 94, 0.8)'

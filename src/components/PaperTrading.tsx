@@ -27,7 +27,7 @@ export function PaperTrading() {
   const allActiveTrade = useTradeStore((s) => s.activeTrade)
   const settings = useTradeStore((s) => s.settings)
 
-  const { setActiveTrade, addTrade, closeTrade, cancelTrade } = useTradeStore()
+  const { setActiveTrade, addTrade, closeTrade, cancelTrade, deleteTrade } = useTradeStore()
 
   // Filter trades for the active symbol only
   const trades = allTrades.filter((t) => t.symbol === activeSymbol)

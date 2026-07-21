@@ -27,7 +27,8 @@ export interface CoachingAnalysis {
   summary: string
 }
 
-const COMMON_MISTAKES = [
+// Common trading mistakes (used for tagging trades in journal)
+export const COMMON_MISTAKES = [
   'Entering too early',
   'Holding losers',
   'Ignoring trend',
